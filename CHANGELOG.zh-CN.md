@@ -5,6 +5,92 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),
 并且本项目遵循 [语义化版本](https://semver.org/spec/v2.0.0.html)。
 
+## [v1.3.31-beta](https://github.com/nocobase/nocobase/compare/v1.3.30-beta...v1.3.31-beta) - 2024-10-11
+
+### 🐛 修复
+
+- **[client]** 修复在筛选表单中使用行政区划字段无法正确筛选出值的问题 ([#5390](https://github.com/nocobase/nocobase/pull/5390)) by @zhangzhonghe
+
+- **[操作：导入记录]** 修复导入 wps 文件报错的问题 ([#5397](https://github.com/nocobase/nocobase/pull/5397)) by @chareice
+
+## [v1.3.30-beta](https://github.com/nocobase/nocobase/compare/v1.3.29-beta...v1.3.30-beta) - 2024-10-11
+
+### 🐛 修复
+
+- **[client]**
+  - 修复在移动端中，显示文件表关系字段时报渲染错误的问题 ([#5387](https://github.com/nocobase/nocobase/pull/5387)) by @zhangzhonghe
+
+  - 修复创建区块菜单无法加载更多数据表的问题 ([#5388](https://github.com/nocobase/nocobase/pull/5388)) by @zhangzhonghe
+
+- **[工作流：自定义操作事件]**
+  - 修复 自定义工作流事件提交成功后跳转不生效 by @katherinehhh
+
+  - 自定义工作流事件提交成功后跳转不生效 by @katherinehhh
+
+## [v1.3.29-beta](https://github.com/nocobase/nocobase/compare/v1.3.28-beta...v1.3.29-beta) - 2024-10-10
+
+### 🚀 优化
+
+- **[client]** 创建表单中也不禁用日期变量 ([#5376](https://github.com/nocobase/nocobase/pull/5376)) by @zhangzhonghe
+
+### 🐛 修复
+
+- **[工作流：SQL 节点]** 修复在 SQL 节点中调用存储过程没有返回结果时导致错误的问题 ([#5385](https://github.com/nocobase/nocobase/pull/5385)) by @mytharcher
+
+- **[工作流]** 修复基于时间字段的定时任务导致报错的问题，并支持其他数据库数据源 ([#5364](https://github.com/nocobase/nocobase/pull/5364)) by @mytharcher
+
+## [v1.3.28-beta](https://github.com/nocobase/nocobase/compare/v1.3.27-beta...v1.3.28-beta) - 2024-10-09
+
+### 🚀 优化
+
+- **[client]** 将 cdn 链接保存为本地资源，以防止在内网部署时请求外部资源 ([#5375](https://github.com/nocobase/nocobase/pull/5375)) by @zhangzhonghe
+
+### 🐛 修复
+
+- **[client]**
+  - 修复在“用户和权限”配置页打开的弹窗被其它弹窗遮挡的问题 ([#5373](https://github.com/nocobase/nocobase/pull/5373)) by @zhangzhonghe
+
+  - 修复在子页面中删除 tab 页后，再次打开后未生效的问题 ([#5362](https://github.com/nocobase/nocobase/pull/5362)) by @zhangzhonghe
+
+  - 修复继承表关系字段无法正常使用变量的问题 ([#5346](https://github.com/nocobase/nocobase/pull/5346)) by @zhangzhonghe
+
+  - 修复字段配置中当前数据表字段与关系表字段互相影响缺陷 ([#5343](https://github.com/nocobase/nocobase/pull/5343)) by @katherinehhh
+
+- **[操作：导入记录]** 修复导入大日期结果不正确的问题 ([#5356](https://github.com/nocobase/nocobase/pull/5356)) by @chareice
+
+- **[工作流]** 修复新增、更新节点中配置关系字段赋值时切换组件导致的页面崩溃 ([#5366](https://github.com/nocobase/nocobase/pull/5366)) by @mytharcher
+
+- **[区块：甘特图]** 修复在甘特图中打开弹窗，然后再关闭，导致子页面也被关闭的问题 ([#5370](https://github.com/nocobase/nocobase/pull/5370)) by @zhangzhonghe
+
+## [v1.3.27-beta](https://github.com/nocobase/nocobase/compare/v1.3.26-beta...v1.3.27-beta) - 2024-09-30
+
+### 🐛 修复
+
+- **[client]** 修复变量“表格中选中的记录” ([#5337](https://github.com/nocobase/nocobase/pull/5337)) by @zhangzhonghe
+
+- **[工作流：自定义操作事件]** 修复自定义操作事件在关系区块中不触发的问题 by @mytharcher
+
+## [v1.3.26-beta](https://github.com/nocobase/nocobase/compare/v1.3.25-beta...v1.3.26-beta) - 2024-09-29
+
+### 🚀 优化
+
+- **[client]** 隐藏移动端的滚动条 ([#5339](https://github.com/nocobase/nocobase/pull/5339)) by @zhangzhonghe
+
+### 🐛 修复
+
+- **[client]**
+  - 修复在嵌入页面中无法打开子页面的问题 ([#5335](https://github.com/nocobase/nocobase/pull/5335)) by @zhangzhonghe
+
+  - 修复弹窗被遮挡的问题 ([#5338](https://github.com/nocobase/nocobase/pull/5338)) by @zhangzhonghe
+
+  - 修复移动端子页面中，使用数据模板创建区块时，样式异常的问题 ([#5340](https://github.com/nocobase/nocobase/pull/5340)) by @zhangzhonghe
+
+  - 修复通过页面菜单关闭子页面时，不刷新页面区块数据的问题 ([#5331](https://github.com/nocobase/nocobase/pull/5331)) by @zhangzhonghe
+
+- **[操作：导出记录]** 修复 decimal 类型字段的导出格式 ([#5316](https://github.com/nocobase/nocobase/pull/5316)) by @chareice
+
+- **[区块：看板]** 修复在嵌入页面中，点击看板卡片后，无法打开弹窗的问题 ([#5326](https://github.com/nocobase/nocobase/pull/5326)) by @zhangzhonghe
+
 ## [v1.3.25-beta](https://github.com/nocobase/nocobase/compare/v1.3.24-beta...v1.3.25-beta) - 2024-09-25
 
 ### 🚀 优化
