@@ -6,12 +6,13 @@
  * This project is dual-licensed under AGPL-3.0 and NocoBase Commercial License.
  * For more information, please refer to: https://www.nocobase.com/agreement.
  */
-
+const _ = require('lodash');
 const { Command } = require('commander');
-const { isDev, run, postCheck, runInstall, promptForTs } = require('../util');
+const { isDev, run, postCheck, downloadPro, promptForTs } = require('../util');
 const { existsSync, rmSync } = require('fs');
 const { resolve } = require('path');
 const chalk = require('chalk');
+const chokidar = require('chokidar');
 
 function deleteSockFiles() {
   const { SOCKET_PATH, PM2_HOME } = process.env;
@@ -38,6 +39,39 @@ module.exports = (cli) => {
     .option('--quickstart')
     .allowUnknownOption()
     .action(async (opts) => {
+      if (opts.quickstart) {
+        await downloadPro();
+      }
+
+      const watcher = chokidar.watch('./storage/plugins/**/*', {
+        cwd: process.cwd(),
+        ignoreInitial: true,
+        ignored: /(^|[\/\\])\../, // 忽略隐藏文件
+        persistent: true,
+        depth: 1, // 只监听第一层目录
+      });
+
+      const restart = _.debounce(async () => {
+        console.log('restarting...');
+        await run('yarn', ['nocobase', 'pm2-restart']);
+      }, 500);
+
+      watcher
+        .on('ready', () => {
+          console.log('Initial scan complete.');
+          isReady = true;
+        })
+        .on('addDir', async (pathname) => {
+          console.log('addDir....', isReady);
+          if (!isReady) return;
+          restart();
+        })
+        .on('unlinkDir', async (pathname) => {
+          console.log('unlinkDir....', isReady);
+          if (!isReady) return;
+          restart();
+        });
+
       if (opts.port) {
         process.env.APP_PORT = opts.port;
       }
@@ -61,11 +95,20 @@ module.exports = (cli) => {
         return;
       }
       await postCheck(opts);
-      deleteSockFiles();
+      if (!opts.daemon) {
+        deleteSockFiles();
+      }
       const instances = opts.instances || process.env.CLUSTER_MODE;
       const instancesArgs = instances ? ['-i', instances] : [];
       if (opts.daemon) {
-        run('pm2', ['start', ...instancesArgs, `${APP_PACKAGE_ROOT}/lib/index.js`, '--', ...process.argv.slice(2)]);
+        await run('pm2', [
+          'start',
+          ...instancesArgs,
+          `${APP_PACKAGE_ROOT}/lib/index.js`,
+          '--',
+          ...process.argv.slice(2),
+        ]);
+        process.exit();
       } else {
         run(
           'pm2-runtime',

@@ -5,6 +5,332 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.4.0](https://github.com/nocobase/nocobase/compare/v1.3.53...v1.4.0) - 2024-12-03
+
+## 🎉 Major New Features
+
+### Simplify the process of adding and updating plugins
+
+![20241201170853](https://static-docs.nocobase.com/20241201170853.png)
+
+* The plugin list now reads directly from the local directory.
+* Combined the processes for adding and updating plugins.
+* Interface supports batch activation of plugins.
+* Simplified the download and upgrade process for commercial plugins.
+
+Reference documentation:
+
+* [Release Notes / Simplify the process of adding and updating plugins](https://www.nocobase.com/en/blog/simplify-the-process-of-adding-and-updating-plugins)
+
+### Notification
+
+![20241201171806](https://static-docs.nocobase.com/20241201171806.png)
+
+* **Notification: In-app message**
+  It supports users in receiving real-time message notifications within the NocoBase application;
+* **Notification: Email**
+  Used for sending email notifications with built-in SMTP transport. Details;
+* **Notification: WeCom**
+  Sends notifications through the WeCom channel.
+
+Reference documentation:
+
+* [Notification Management](https://docs.nocobase.com/handbook/notification-manager)
+
+### User Data Synchronization
+
+![20241201172843](https://static-docs.nocobase.com/20241201172843.png)
+
+Reference documentation:
+
+* [User Data Synchronization](https://docs.nocobase.com/handbook/user-data-sync)
+
+### Backup Manager
+
+![20241201170237](https://static-docs.nocobase.com/20241201170237.png)
+
+Reference documentation:
+
+* [Backup Manager](https://docs.nocobase.com/handbook/backups)
+
+### Public Forms
+
+Share public forms externally to collect information from anonymous users.
+
+![20241201165614](https://static-docs.nocobase.com/20241201165614.png)
+
+Reference documentation:
+
+* [Public Forms](https://docs.nocobase.com/handbook/public-forms)
+
+### Data Source: KingbaseES
+
+Use the KingbaseES database as a data source, either as the main database or an external database.
+
+![20241024121815](https://static-docs.nocobase.com/20241024121815.png)
+
+Reference documentation:
+
+* [Data Source - KingbaseES](https://docs.nocobase.com/handbook/data-source-kingbase)
+
+### Data Source: External Oracle
+
+Use external Oracle databases as a data source.
+
+![628abc5eb797e6b903d4b548f773a13b.png](https://static-docs.nocobase.com/628abc5eb797e6b903d4b548f773a13b.png)
+
+Reference documentation:
+
+* [External Data Source - Oracle](https://docs.nocobase.com/handbook/data-source-external-oracle)
+
+### Collection Field: Attachments (URL)
+
+Supports URL-based attachments.
+
+![e8772bec3d4b1771c1b21d087c9a4185.png](https://static-docs.nocobase.com/e8772bec3d4b1771c1b21d087c9a4185.png)
+
+Reference documentation:
+
+* [Data Table Field: Attachments (URL)](https://docs.nocobase.com/handbook/field-attachment-url)
+
+### Field Component: Mask
+
+![20241201165938](https://static-docs.nocobase.com/20241201165938.png)
+
+Reference documentation:
+
+* [Field component: Mask](https://docs.nocobase.com/handbook/field-component-mask)
+
+### Workflow: JavaScript
+
+JavaScript nodes allow users to execute JavaScript within a workflow. The script can use variables from upstream nodes in the process as parameters and the return value of the script can be used in downstream nodes.
+
+![20241202203655](https://static-docs.nocobase.com/20241202203655.png)
+
+Reference documentation:
+
+* [Workflow - JavaScript](https://docs.nocobase.com/handbook/workflow-javascript)
+
+### Data Visualization: ECharts
+
+Added ECharts, supporting funnel, radar and more charts, and providing more user-friendly configurations.
+
+![data-visualization-echarts](https://static-docs.nocobase.com/202410091022965.png)
+
+Reference documentation:
+
+* [Data Visualization: Echarts](https://docs.nocobase.com/handbook/data-visualization-echarts)
+
+### Block: Multi-step form
+
+![a503e153e8d714b9ca56f512142aeef1.png](https://static-docs.nocobase.com/a503e153e8d714b9ca56f512142aeef1.png)
+
+Reference documentation:
+
+* [Multi-step form](https://docs.nocobase.com/handbook/block-multi-step-from)
+
+### Block: Action Panel
+
+Designed to house various quick actions, currently supports:
+
+* Link
+* Scan QR code
+* Popup
+* Custom request
+
+Supports both grid and list layouts
+
+![9942e6741e99195713f9e2981b02f228.png](https://static-docs.nocobase.com/9942e6741e99195713f9e2981b02f228.png)
+
+Reference documentation:
+
+* [Action Panel](https://docs.nocobase.com/handbook/block-action-panel)
+
+## [v1.3.55](https://github.com/nocobase/nocobase/compare/v1.3.54...v1.3.55) - 2024-12-03
+
+### 🚀 Improvements
+
+- **[client]** To use icons with more accurate meanings for block initializers ([#5757](https://github.com/nocobase/nocobase/pull/5757)) by @mytharcher
+
+### 🐛 Bug Fixes
+
+- **[client]**
+  - Fix E2E cases based on changed icons ([#5768](https://github.com/nocobase/nocobase/pull/5768)) by @mytharcher
+
+  - Fix select field to display blank when data is empty ([#5762](https://github.com/nocobase/nocobase/pull/5762)) by @katherinehhh
+
+- **[database]** Fix update hasOne/belongsTo association values without foreign key ([#5754](https://github.com/nocobase/nocobase/pull/5754)) by @chareice
+
+- **[Data source manager]** Fix  incorrect display of source key ([#5771](https://github.com/nocobase/nocobase/pull/5771)) by @katherinehhh
+
+- **[Workflow: Custom action event]**
+  - Allow all roles to triggering custom action event in external data sources by @mytharcher
+
+  - Fix default data source as main by @mytharcher
+
+  - Fix data source error when not matched by @mytharcher
+
+  - Fix custom action trigger not triggering on association by @mytharcher
+
+## [v1.3.53](https://github.com/nocobase/nocobase/compare/v1.3.52...v1.3.53) - 2024-11-28
+
+### 🚀 Improvements
+
+- **[client]**
+  - export essential hook ([#5702](https://github.com/nocobase/nocobase/pull/5702)) by @mytharcher
+
+  - china region field plugin remove from built-in plugins ([#5693](https://github.com/nocobase/nocobase/pull/5693)) by @katherinehhh
+
+- **[Workflow: Pre-action event]** remove waring log in request interceptor by @mytharcher
+
+### 🐛 Bug Fixes
+
+- **[cli]** Daemon mode does not delete sock files ([#5750](https://github.com/nocobase/nocobase/pull/5750)) by @chenos
+
+- **[client]**
+  - Fix issue with association fields affecting each other when  multiple association fields has the same target collection ([#5744](https://github.com/nocobase/nocobase/pull/5744)) by @katherinehhh
+
+  - Fix issue with checkbox alignment in sub-table ([#5735](https://github.com/nocobase/nocobase/pull/5735)) by @katherinehhh
+
+  - Fix foreign key field display issue in the data selector ([#5734](https://github.com/nocobase/nocobase/pull/5734)) by @katherinehhh
+
+  - Fix adjust feedbackLayout to improve validation messaging in sub-table ([#5700](https://github.com/nocobase/nocobase/pull/5700)) by @katherinehhh
+
+- **[server]** Load plugins in dependency order ([#5706](https://github.com/nocobase/nocobase/pull/5706)) by @chenos
+
+- **[Block: Map]** Fix error when changing zoom levels in Google Maps ([#5722](https://github.com/nocobase/nocobase/pull/5722)) by @katherinehhh
+
+- **[Data source: Main]** Fix infer field name in view collection ([#5729](https://github.com/nocobase/nocobase/pull/5729)) by @chareice
+
+- **[File manager]** when the endpoint is not empty, forcePathStyle is set to true ([#5712](https://github.com/nocobase/nocobase/pull/5712)) by @chenos
+
+## [v1.3.52](https://github.com/nocobase/nocobase/compare/v1.3.51...v1.3.52) - 2024-11-21
+
+### 🚀 Improvements
+
+- **[Workflow]**
+  - remove page limit in query node ([#5694](https://github.com/nocobase/nocobase/pull/5694)) by @mytharcher
+
+  - change executions not to be deleted when workflow deleted ([#5666](https://github.com/nocobase/nocobase/pull/5666)) by @mytharcher
+
+- **[Data source: REST API]** Optimize REST API plugin text descriptions by @katherinehhh
+
+## [v1.3.51](https://github.com/nocobase/nocobase/compare/v1.3.50-beta...v1.3.51) - 2024-11-19
+
+### 🐛 Bug Fixes
+
+- **[client]**
+  - Fix  field permission check not affected by association field context ([#5672](https://github.com/nocobase/nocobase/pull/5672)) by @katherinehhh
+
+  - Fix linkage rule saving empty value changes to static empty value ([#5667](https://github.com/nocobase/nocobase/pull/5667)) by @katherinehhh
+
+- **[Collection field: Many to many (array)]** Fix the issue where retrieving records in an association collection with many to many (array) fields causes an error ([#5661](https://github.com/nocobase/nocobase/pull/5661)) by @2013xile
+
+- **[Block: Gantt]** Fix gantt block template incorrectly calls the calendar block when adding ([#5673](https://github.com/nocobase/nocobase/pull/5673)) by @katherinehhh
+
+- **[Data visualization]** Fix the issue where data transformations do not work on tooltip in dual-axes charts ([#5649](https://github.com/nocobase/nocobase/pull/5649)) by @2013xile
+
+## [v1.3.50-beta](https://github.com/nocobase/nocobase/compare/v1.3.49-beta...v1.3.50-beta) - 2024-11-14
+
+### 🐛 Bug Fixes
+
+- **[client]** Fix issue preventing linkage rule title from being cleared during editing ([#5644](https://github.com/nocobase/nocobase/pull/5644)) by @katherinehhh
+
+- **[Comments]** Fix data scope setting not working in comment block by @katherinehhh
+
+## [v1.3.49-beta](https://github.com/nocobase/nocobase/compare/v1.3.48-beta...v1.3.49-beta) - 2024-11-13
+
+### 🚀 Improvements
+
+- **[client]** support one-to-one and many-to-many (array) field to use file collection ([#5637](https://github.com/nocobase/nocobase/pull/5637)) by @mytharcher
+
+- **[evaluators]** use Formula.js as default evaluator in calculation node ([#5626](https://github.com/nocobase/nocobase/pull/5626)) by @mytharcher
+
+### 🐛 Bug Fixes
+
+- **[client]** Fix  reset issue that reverts filter button title to default ([#5635](https://github.com/nocobase/nocobase/pull/5635)) by @katherinehhh
+
+- **[Action: Import records]** Fixed the issue that many-to-many relationship data cannot be imported through the id field ([#5623](https://github.com/nocobase/nocobase/pull/5623)) by @chareice
+
+## [v1.3.48-beta](https://github.com/nocobase/nocobase/compare/v1.3.47-beta...v1.3.48-beta) - 2024-11-11
+
+### 🚀 Improvements
+
+- **[client]** support hiding menu items ([#5624](https://github.com/nocobase/nocobase/pull/5624)) by @chenos
+
+- **[server]** add  DB_SQL_BENCHMARK  environment variable ([#5615](https://github.com/nocobase/nocobase/pull/5615)) by @chareice
+
+### 🐛 Bug Fixes
+
+- **[client]** support file collection as target of one-to-many association ([#5619](https://github.com/nocobase/nocobase/pull/5619)) by @mytharcher
+
+- **[Action: Import records]** Fixed the issue that many-to-many relationship data cannot be imported through the id field ([#5623](https://github.com/nocobase/nocobase/pull/5623)) by @chareice
+
+## [v1.3.47-beta](https://github.com/nocobase/nocobase/compare/v1.3.46-beta...v1.3.47-beta) - 2024-11-08
+
+### 🚀 Improvements
+
+- **[Authentication]** Optimize error message for sign in and sign up ([#5612](https://github.com/nocobase/nocobase/pull/5612)) by @2013xile
+
+### 🐛 Bug Fixes
+
+- **[client]**
+  - Fix default value issues in subtable ([#5607](https://github.com/nocobase/nocobase/pull/5607)) by @zhangzhonghe
+
+  - Fix issue with fuzzy search support for association fields with string type title field ([#5611](https://github.com/nocobase/nocobase/pull/5611)) by @katherinehhh
+
+- **[Authentication]** Fix the issue where users can't change password when signing in with a non-password authenticator ([#5609](https://github.com/nocobase/nocobase/pull/5609)) by @2013xile
+
+## [v1.3.45-beta](https://github.com/nocobase/nocobase/compare/v1.3.44-beta...v1.3.45-beta) - 2024-11-06
+
+### 🐛 Bug Fixes
+
+- **[client]** permission for the association table field in the table is based on the permission of the corresponding association field ([#5569](https://github.com/nocobase/nocobase/pull/5569)) by @katherinehhh
+
+- **[Action: Export records]** Fix export with i18n ([#5591](https://github.com/nocobase/nocobase/pull/5591)) by @chareice
+
+- **[Action: Import records]** fix issue with import belongs to association ([#5417](https://github.com/nocobase/nocobase/pull/5417)) by @chareice
+
+## [v1.3.44-beta](https://github.com/nocobase/nocobase/compare/v1.3.43-beta...v1.3.44-beta) - 2024-11-05
+
+### 🎉 New Features
+
+- **[Auth: OIDC]** Add an option "enable RP-initiated logout" by @2013xile
+
+### 🐛 Bug Fixes
+
+- **[client]** Fix filter issue when setting single-select field as title field in association select ([#5581](https://github.com/nocobase/nocobase/pull/5581)) by @katherinehhh
+
+## [v1.3.43-beta](https://github.com/nocobase/nocobase/compare/v1.3.42-beta...v1.3.43-beta) - 2024-11-05
+
+### 🚀 Improvements
+
+- **[client]** numeric precision can be configured to 8 digits ([#5552](https://github.com/nocobase/nocobase/pull/5552)) by @chenos
+
+### 🐛 Bug Fixes
+
+- **[client]** Fix linkage style not updating in form. ([#5539](https://github.com/nocobase/nocobase/pull/5539)) by @sheldon66
+
+- **[Auth: API keys]** Fix the URL path for API keys settings page ([#5562](https://github.com/nocobase/nocobase/pull/5562)) by @2013xile
+
+- **[Mobile]** Fix the issue of preview images being covered by page ([#5535](https://github.com/nocobase/nocobase/pull/5535)) by @zhangzhonghe
+
+- **[Block: Map]** resolve map rendering in sub-details and incorrect value display for empty fields ([#5526](https://github.com/nocobase/nocobase/pull/5526)) by @katherinehhh
+
+- **[Collection: Tree]** Fix errors when updating path collection ([#5551](https://github.com/nocobase/nocobase/pull/5551)) by @2013xile
+
+## [v1.3.42-beta](https://github.com/nocobase/nocobase/compare/v1.3.41-beta...v1.3.42-beta) - 2024-10-28
+
+### 🐛 Bug Fixes
+
+- **[Collection: Tree]** Fix the issue where node paths are not updated when disassociate children ([#5522](https://github.com/nocobase/nocobase/pull/5522)) by @2013xile
+
+## [v1.3.41-beta](https://github.com/nocobase/nocobase/compare/v1.3.40-beta...v1.3.41-beta) - 2024-10-27
+
+### 🚀 Improvements
+
+- **[Access control]** Optimize performance for large tables in acl ([#5496](https://github.com/nocobase/nocobase/pull/5496)) by @chareice
+
 ## [v1.3.40-beta](https://github.com/nocobase/nocobase/compare/v1.3.39-beta...v1.3.40-beta) - 2024-10-25
 
 ### 🎉 New Features
