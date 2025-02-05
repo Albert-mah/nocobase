@@ -22,7 +22,7 @@ type ResourceActionOptions<P = any> = {
   params?: P;
 };
 
-type ResourceAction = (params?: ActionParams) => Promise<any>;
+type ResourceAction = (params?: ActionParams, opts?: any) => Promise<any>;
 
 export type IResource = {
   [key: string]: ResourceAction;
@@ -166,6 +166,12 @@ export class Auth {
    */
   setToken(token: string) {
     this.setOption('token', token);
+
+    if (this.api['app']) {
+      this.api['app'].eventBus.dispatchEvent(
+        new CustomEvent('auth:tokenChanged', { detail: { token, authenticator: this.authenticator } }),
+      );
+    }
   }
 
   /**
@@ -210,8 +216,8 @@ export class Auth {
       },
     });
     const data = response?.data?.data;
-    this.setToken(data?.token);
     this.setAuthenticator(authenticator);
+    this.setToken(data?.token);
     return response;
   }
 

@@ -8,8 +8,6 @@
  */
 
 import { ISchema } from '@formily/react';
-import { useActionContext, useCollectionRecord, useRecord, useRequest } from '@nocobase/client';
-import { useEffect } from 'react';
 import { uid } from '@formily/shared';
 
 export const userCollection = {
@@ -230,6 +228,9 @@ export const usersSchema: ISchema = {
                     password: {
                       'x-component': 'CollectionField',
                       'x-decorator': 'FormItem',
+                      'x-component-props': {
+                        autoComplete: 'new-password',
+                      },
                       required: true,
                     },
                     roles: {
@@ -317,7 +318,6 @@ export const usersSchema: ISchema = {
               title: '{{t("Roles")}}',
               properties: {
                 roles: {
-                  type: 'array',
                   'x-component': 'CollectionField',
                   'x-component-props': {
                     mode: 'Tag',

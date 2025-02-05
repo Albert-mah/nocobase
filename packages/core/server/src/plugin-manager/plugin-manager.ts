@@ -263,11 +263,11 @@ export class PluginManager {
     return this.app.pm.pluginAliases.keys();
   }
 
-  get(name: string | typeof Plugin) {
+  get<T extends Plugin>(name: string | typeof Plugin | (new () => T)): T {
     if (typeof name === 'string') {
-      return this.app.pm.pluginAliases.get(name);
+      return this.app.pm.pluginAliases.get(name) as any;
     }
-    return this.app.pm.pluginInstances.get(name);
+    return this.app.pm.pluginInstances.get(name as any) as any;
   }
 
   has(name: string | typeof Plugin) {
@@ -277,7 +277,7 @@ export class PluginManager {
     return this.app.pm.pluginInstances.has(name);
   }
 
-  del(name: string | typeof Plugin) {
+  del(name: any) {
     const instance = this.get(name);
     if (instance) {
       this.app.pm.pluginAliases.delete(instance.name);
@@ -394,16 +394,21 @@ export class PluginManager {
     const packageNames: string[] = items.map((item) => item.packageName);
     const source = [];
     for (const packageName of packageNames) {
-      const dirname = await getPluginBasePath(packageName);
-      const directory = join(dirname, 'server/commands/*.' + (basename(dirname) === 'src' ? 'ts' : 'js'));
+      try {
+        const dirname = await getPluginBasePath(packageName);
+        const directory = join(dirname, 'server/commands/*.' + (basename(dirname) === 'src' ? '{ts,js}' : 'js'));
 
-      source.push(directory.replaceAll(sep, '/'));
+        source.push(directory.replaceAll(sep, '/'));
+      } catch (error) {
+        this.app.log.error(error);
+        continue;
+      }
     }
     for (const plugin of this.options.plugins || []) {
       if (typeof plugin === 'string') {
         const { packageName } = await PluginManager.parseName(plugin);
         const dirname = await getPluginBasePath(packageName);
-        const directory = join(dirname, 'server/commands/*.' + (basename(dirname) === 'src' ? 'ts' : 'js'));
+        const directory = join(dirname, 'server/commands/*.' + (basename(dirname) === 'src' ? '{ts,js}' : 'js'));
         source.push(directory.replaceAll(sep, '/'));
       }
     }
@@ -411,6 +416,7 @@ export class PluginManager {
       ignore: ['**/*.d.ts'],
       cwd: process.env.NODE_MODULES_PATH,
     });
+
     for (const file of files) {
       const callback = await importModule(file);
       callback(this.app);
@@ -461,6 +467,41 @@ export class PluginManager {
       plugin.state.loaded = true;
       await this.app.emitAsync('afterLoadPlugin', plugin, options);
     }
+
+    const getSourceAndTargetForAddAction = async (ctx: any) => {
+      const { packageName } = ctx.action.params;
+      return {
+        targetCollection: 'applicationPlugins',
+        targetRecordUK: packageName,
+      };
+    };
+
+    const getSourceAndTargetForUpdateAction = async (ctx: any) => {
+      let { packageName } = ctx.action.params;
+      if (ctx.file) {
+        packageName = ctx.request.body.packageName;
+      }
+      return {
+        targetCollection: 'applicationPlugins',
+        targetRecordUK: packageName,
+      };
+    };
+
+    const getSourceAndTargetForOtherActions = async (ctx: any) => {
+      const { filterByTk } = ctx.action.params;
+      return {
+        targetCollection: 'applicationPlugins',
+        targetRecordUK: filterByTk,
+      };
+    };
+
+    this.app.auditManager.registerActions([
+      { name: 'pm:add', getSourceAndTarget: getSourceAndTargetForAddAction },
+      { name: 'pm:update', getSourceAndTarget: getSourceAndTargetForUpdateAction },
+      { name: 'pm:enable', getSourceAndTarget: getSourceAndTargetForOtherActions },
+      { name: 'pm:disable', getSourceAndTarget: getSourceAndTargetForOtherActions },
+      { name: 'pm:remove', getSourceAndTarget: getSourceAndTargetForOtherActions },
+    ]);
 
     this.app.log.debug('plugins loaded');
     this.app.setMaintainingMessage('plugins loaded');
