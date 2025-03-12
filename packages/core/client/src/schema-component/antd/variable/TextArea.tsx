@@ -9,7 +9,7 @@
 
 import { css, cx } from '@emotion/css';
 import { useForm } from '@formily/react';
-import { Space } from 'antd';
+import { Space, theme } from 'antd';
 import useInputStyle from 'antd/es/input/style';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { renderToString } from 'react-dom/server';
@@ -222,7 +222,7 @@ function useVariablesFromValue(value: string, delimiters: [string, string] = ['{
 
 export function TextArea(props) {
   const { wrapSSR, hashId, componentCls } = useStyles();
-  const { scope, onChange, changeOnSelect, style, fieldNames, delimiters = ['{{', '}}'] } = props;
+  const { scope, onChange, changeOnSelect, style, fieldNames, delimiters = ['{{', '}}'], addonBefore } = props;
   const value = typeof props.value === 'string' ? props.value : props.value == null ? '' : props.value.toString();
   const variables = useVariablesFromValue(value, delimiters);
   const inputRef = useRef<HTMLDivElement>(null);
@@ -238,6 +238,7 @@ export function TextArea(props) {
   // NOTE: e.g. [startElementIndex, startOffset, endElementIndex, endOffset]
   const [range, setRange] = useState<[number, number, number, number]>([-1, 0, -1, 0]);
   useInputStyle('ant-input');
+  const { token } = theme.useToken();
   const delimitersString = delimiters.join(' ');
 
   useEffect(() => {
@@ -396,7 +397,6 @@ export function TextArea(props) {
     },
     [onChange, delimitersString],
   );
-
   const disabled = props.disabled || form.disabled;
   return wrapSSR(
     <Space.Compact
@@ -409,6 +409,8 @@ export function TextArea(props) {
             flex-grow: 1;
             min-width: 200px;
             word-break: break-all;
+            border-top-left-radius: ${addonBefore ? '0px' : '6px'};
+            border-bottom-left-radius: ${addonBefore ? '0px' : '6px'};
           }
           .ant-input-disabled {
             .ant-tag {
@@ -423,6 +425,19 @@ export function TextArea(props) {
         `,
       )}
     >
+      {addonBefore && (
+        <div
+          className={css`
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid rgb(217, 217, 217);
+            padding: 0px 11px;
+            border-radius: 6px 0px 0px 6px;
+            border-right: 0px;
+          `}
+        >
+          {addonBefore}
+        </div>
+      )}
       <div
         role="button"
         aria-label="textbox"
@@ -432,6 +447,8 @@ export function TextArea(props) {
         onPaste={onPaste}
         onCompositionStart={onCompositionStart}
         onCompositionEnd={onCompositionEnd}
+        // should use data-placeholder here, but not sure if it is safe to make the change, so add ignore here
+        // @ts-ignore
         placeholder={props.placeholder}
         style={style}
         className={cx(
@@ -440,6 +457,7 @@ export function TextArea(props) {
           { 'ant-input-disabled': disabled },
           // NOTE: `pre-wrap` here for avoid the `&nbsp;` (\x160) issue when paste content, we need normal space (\x32).
           css`
+            min-height: ${token.controlHeight}px;
             overflow: auto;
             white-space: pre-wrap;
 
@@ -461,15 +479,14 @@ export function TextArea(props) {
         contentEditable={!disabled}
         dangerouslySetInnerHTML={{ __html: html }}
       />
-      {!disabled ? (
-        <VariableSelect
-          options={options}
-          setOptions={setOptions}
-          onInsert={onInsert}
-          changeOnSelect={changeOnSelect}
-          fieldNames={fieldNames || defaultFieldNames}
-        />
-      ) : null}
+      <VariableSelect
+        options={options}
+        setOptions={setOptions}
+        onInsert={onInsert}
+        changeOnSelect={changeOnSelect}
+        fieldNames={fieldNames || defaultFieldNames}
+        disabled={disabled}
+      />
     </Space.Compact>,
   );
 }
