@@ -97,6 +97,30 @@ const filterValue = (value) => {
   return obj;
 };
 
+function getFilteredFormValues(form) {
+  const values = _.cloneDeep(form.values);
+  const allFields = [];
+  form.query('*').forEach((field) => {
+    if (field) {
+      allFields.push(field);
+    }
+  });
+  const readonlyPaths = allFields
+    .filter((field) => field?.componentProps?.readOnlySubmit)
+    .map((field) => {
+      const segments = field.path?.segments || [];
+      if (segments.length <= 1) {
+        return segments.join('.');
+      }
+      return segments.slice(0, -1).join('.');
+    });
+  for (const path of readonlyPaths) {
+    _.unset(values, path);
+  }
+
+  return values;
+}
+
 export function getFormValues({
   filterByTk,
   field,
@@ -124,7 +148,7 @@ export function getFormValues({
     }
   }
 
-  return form.values;
+  return getFilteredFormValues(form);
 }
 
 export function useCollectValuesToSubmit() {
@@ -167,7 +191,7 @@ export function useCollectValuesToSubmit() {
         if (parsedValue !== null && parsedValue !== undefined) {
           assignedValues[key] = transformVariableValue(parsedValue, { targetCollectionField: collectionField });
         }
-      } else if (value != null && value !== '') {
+      } else if (value !== '') {
         assignedValues[key] = value;
       }
     });
@@ -338,7 +362,7 @@ export const useAssociationCreateActionProps = () => {
           if (parsedValue) {
             assignedValues[key] = transformVariableValue(parsedValue, { targetCollectionField: collectionField });
           }
-        } else if (value != null && value !== '') {
+        } else if (value !== '') {
           assignedValues[key] = value;
         }
       });
@@ -468,6 +492,10 @@ const useDoFilter = () => {
               block.defaultFilter,
             ]);
 
+            if (_.isEmpty(storedFilter[uid])) {
+              block.clearSelection?.();
+            }
+
             if (doNothingWhenFilterIsEmpty && _.isEmpty(storedFilter[uid])) {
               return;
             }
@@ -518,9 +546,11 @@ export const useFilterBlockActionProps = () => {
   const { doFilter } = useDoFilter();
   const actionField = useField();
   actionField.data = actionField.data || {};
+  const form = useForm();
 
   return {
     async onClick() {
+      await form.submit();
       actionField.data.loading = true;
       await doFilter();
       actionField.data.loading = false;
@@ -601,7 +631,7 @@ export const useCustomizeUpdateActionProps = () => {
           if (parsedValue) {
             assignedValues[key] = transformVariableValue(parsedValue, { targetCollectionField: collectionField });
           }
-        } else if (value != null && value !== '') {
+        } else if (value !== '') {
           assignedValues[key] = value;
         }
       });
@@ -704,7 +734,7 @@ export const useCustomizeBulkUpdateActionProps = () => {
           if (parsedValue) {
             assignedValues[key] = transformVariableValue(parsedValue, { targetCollectionField: collectionField });
           }
-        } else if (value != null && value !== '') {
+        } else if (value !== '') {
           assignedValues[key] = value;
         }
       });
@@ -926,7 +956,7 @@ export const useUpdateActionProps = () => {
           if (parsedValue) {
             assignedValues[key] = transformVariableValue(parsedValue, { targetCollectionField: collectionField });
           }
-        } else if (value != null && value !== '') {
+        } else if (value !== '') {
           assignedValues[key] = value;
         }
       });
@@ -1349,6 +1379,7 @@ export const useAssociationFilterBlockProps = () => {
             [filterKey]: value,
           };
         } else {
+          block.clearSelection?.();
           if (block.dataLoadingMode === 'manual') {
             return block.clearData();
           }
@@ -1441,6 +1472,8 @@ async function doReset({
       getDataBlocks().map(async (block) => {
         const target = targets.find((target) => target.uid === block.uid);
         if (!target) return;
+
+        block.clearSelection?.();
 
         if (block.dataLoadingMode === 'manual') {
           return block.clearData();

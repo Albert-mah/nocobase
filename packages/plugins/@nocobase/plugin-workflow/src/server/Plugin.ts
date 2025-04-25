@@ -15,7 +15,7 @@ import LRUCache from 'lru-cache';
 
 import { Op } from '@nocobase/database';
 import { Plugin } from '@nocobase/server';
-import { Registry } from '@nocobase/utils';
+import { Registry, uid } from '@nocobase/utils';
 import { SequelizeCollectionManager } from '@nocobase/data-source-manager';
 import { Logger, LoggerOptions } from '@nocobase/logger';
 
@@ -74,6 +74,10 @@ export default class PluginWorkflowServer extends Plugin {
 
   private onBeforeSave = async (instance: WorkflowModel, { transaction }) => {
     const Model = <typeof WorkflowModel>instance.constructor;
+
+    if (!instance.key) {
+      instance.set('key', uid());
+    }
 
     if (instance.enabled) {
       instance.set('current', true);
@@ -283,9 +287,17 @@ export default class PluginWorkflowServer extends Plugin {
     db.on('workflows.afterUpdate', (model: WorkflowModel, { transaction }) =>
       this.toggle(model, model.enabled, { transaction }),
     );
-    db.on('workflows.afterDestroy', (model: WorkflowModel, { transaction }) =>
-      this.toggle(model, false, { transaction }),
-    );
+    db.on('workflows.afterDestroy', async (model: WorkflowModel, { transaction }) => {
+      this.toggle(model, false, { transaction });
+
+      const TaskRepo = this.db.getRepository('workflowTasks');
+      await TaskRepo.destroy({
+        filter: {
+          workflowId: model.id,
+        },
+        transaction,
+      });
+    });
 
     // [Life Cycle]:
     //   * load all workflows in db
@@ -354,11 +366,16 @@ export default class PluginWorkflowServer extends Plugin {
       const prev = workflow.previous();
       if (prev.config) {
         trigger.off({ ...workflow.get(), ...prev });
+        this.getLogger(workflow.id).info(`toggle OFF workflow ${workflow.id} based on configuration before updated`);
       }
       trigger.on(workflow);
+      this.getLogger(workflow.id).info(`toggle ON workflow ${workflow.id}`);
+
       this.enabledCache.set(workflow.id, workflow);
     } else {
       trigger.off(workflow);
+      this.getLogger(workflow.id).info(`toggle OFF workflow ${workflow.id}`);
+
       this.enabledCache.delete(workflow.id);
     }
     if (!silent) {
@@ -766,6 +783,7 @@ export default class PluginWorkflowServer extends Plugin {
         (await repository.countAll({
           where: {
             userId: task.userId,
+            workflowId: { [Op.ne]: null },
           },
           transaction,
         })) || [];
