@@ -103,6 +103,11 @@ export const useRoleRecheck = () => {
   };
 };
 
+export const useCurrentRoleMode = () => {
+  const ctx = useContext(ACLContext);
+  return ctx?.data?.data?.roleMode;
+};
+
 export const useACLContext = () => {
   return useContext(ACLContext);
 };
@@ -209,9 +214,9 @@ export function useACLRoleContext() {
     },
     [allowedActions, getActionAlias],
   );
-
   return {
     ...data,
+    snippets: data?.snippets || [],
     parseAction: useCallback(
       (actionPath: string, options: any = {}) => {
         const [resourceName, actionName] = actionPath?.split(':') || [];
