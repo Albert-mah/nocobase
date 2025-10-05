@@ -116,7 +116,7 @@ export default class Processor {
         plugin.enabledCache.get(execution.workflowId) || (await execution.getWorkflow({ transaction }));
     }
 
-    const nodes = await execution.workflow.getNodes({ transaction });
+    const nodes = execution.workflow.nodes || (await execution.workflow.getNodes({ transaction }));
     execution.workflow.nodes = nodes;
 
     this.makeNodes(nodes);
@@ -433,14 +433,14 @@ export default class Processor {
     for (let n = this.findBranchEndNode(node); n && n !== node.upstream; n = n.upstream) {
       branchJobs.push(...allJobs.filter((item) => item.nodeId === n.id));
     }
-    branchJobs.sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime());
+    branchJobs.sort((a, b) => a.id - b.id);
     return branchJobs[branchJobs.length - 1] || null;
   }
 
   /**
    * @experimental
    */
-  public getScope(sourceNodeId: number | string, includeSelfScope = false) {
+  public getScope(sourceNodeId?: number | string, includeSelfScope = false) {
     const node = this.nodesMap.get(sourceNodeId);
     const systemFns = {};
     const scope = {
@@ -471,7 +471,11 @@ export default class Processor {
   /**
    * @experimental
    */
-  public getParsedValue(value, sourceNodeId: number | string, { additionalScope = {}, includeSelfScope = false } = {}) {
+  public getParsedValue(
+    value,
+    sourceNodeId?: number | string,
+    { additionalScope = {}, includeSelfScope = false } = {},
+  ) {
     const template = parse(value);
     const scope = Object.assign(this.getScope(sourceNodeId, includeSelfScope), additionalScope);
     template.parameters.forEach(({ key }) => {

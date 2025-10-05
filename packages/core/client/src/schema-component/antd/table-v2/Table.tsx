@@ -232,7 +232,7 @@ const useTableColumns = (
                 schema={columnSchema}
                 onlyRenderSelf
                 isUseFormilyField={false}
-                tooltip={columnSchema?.['x-component-props']?.tooltip}
+                tooltip={t(columnSchema?.['x-component-props']?.tooltip, { ns: NAMESPACE_UI_SCHEMA })}
               />
             </RefreshComponentProvider>
           ),
@@ -467,7 +467,7 @@ const usePaginationProps = (pagination1, pagination2, tableProps) => {
                   }
                 `}
               >
-                {originalElement} <div style={{ marginLeft: '7px' }}>{current}</div>
+                {originalElement} <div>{current}</div>
               </div>
             );
           } else {

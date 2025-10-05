@@ -66,7 +66,7 @@ const Modes = {
       return true;
     },
     getStatus(result) {
-      if (result.some((status) => status === JOB_STATUS.PENDING)) {
+      if (result.some((status) => !status)) {
         return JOB_STATUS.PENDING;
       }
       return JOB_STATUS.RESOLVED;
@@ -113,7 +113,8 @@ export default class extends Instruction {
     const { result, status } = job;
     // if parallel has been done (resolved / rejected), do not care newly executed branch jobs.
     if (status !== JOB_STATUS.PENDING) {
-      return processor.exit();
+      processor.logger.warn(`parallel (${job.nodeId}) has been done, ignore newly resumed event`);
+      return null;
     }
 
     // find the index of the node which start the branch
@@ -130,8 +131,8 @@ export default class extends Instruction {
     });
 
     if (job.status === JOB_STATUS.PENDING) {
-      await job.save({ transaction: processor.transaction });
-      return processor.exit();
+      processor.saveJob(job);
+      return null;
     }
 
     return job;
