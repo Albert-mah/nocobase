@@ -18,7 +18,7 @@ import _ from 'lodash';
 import get from 'lodash/get';
 import omit from 'lodash/omit';
 import qs from 'qs';
-import { ChangeEvent, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
+import { ChangeEvent, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavigateFunction } from 'react-router-dom';
 import {
@@ -39,9 +39,10 @@ import { CollectionOptions, useCollectionManager_deprecated, useCollection_depre
 import { getVariableValue } from '../../common/getVariableValue';
 import { DataBlock, useFilterBlock } from '../../filter-provider/FilterProvider';
 import { mergeFilter, transformToFilter } from '../../filter-provider/utils';
+import { NAMESPACE_UI_SCHEMA } from '../../i18n/constant';
 import { useTreeParentRecord } from '../../modules/blocks/data-blocks/table/TreeRecordProvider';
 import { useRecord } from '../../record-provider';
-import { removeNullCondition, useActionContext, useCompile } from '../../schema-component';
+import { removeNullCondition, useActionContext, useColumnSettings, useCompile } from '../../schema-component';
 import { isSubMode } from '../../schema-component/antd/association-field/util';
 import { replaceVariables } from '../../schema-settings/LinkageRules/bindLinkageRulesToFiled';
 import { useCurrentUserContext } from '../../user';
@@ -615,9 +616,10 @@ export const useResetBlockActionProps = () => {
 };
 
 export const useCustomizeUpdateActionProps = () => {
-  const { resource, __parent, service } = useBlockRequestContext();
+  const { resource, __parent, field, service } = useBlockRequestContext();
   const filterByTk = useFilterByTk();
   const actionSchema = useFieldSchema();
+  const actionField = useField();
   const navigate = useNavigateNoUpdate();
   const compile = useCompile();
   const form = useForm();
@@ -665,59 +667,72 @@ export const useCustomizeUpdateActionProps = () => {
       if (skipValidator === false) {
         await form.submit();
       }
-      const result = await resource.update({
-        filterByTk,
-        values: { ...assignedValues },
-        // TODO(refactor): should change to inject by plugin
-        triggerWorkflows: triggerWorkflows?.length
-          ? triggerWorkflows.map((row) => [row.workflowKey, row.context].filter(Boolean).join('!')).join(',')
-          : undefined,
-      });
 
-      let redirectTo = rawRedirectTo;
-      if (rawRedirectTo) {
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        redirectTo = await getVariableValue(rawRedirectTo, {
-          variables,
-          localVariables: [...localVariables, { name: '$record', ctx: new Proxy(result?.data?.data, {}) }],
-        });
-      }
-
-      if (actionAfterSuccess === 'previous' || (!actionAfterSuccess && redirecting !== true)) {
-        setVisible?.(false);
-      }
-      // service?.refresh?.();
-      if (callBack) {
-        callBack?.();
-      }
-      if (!(resource instanceof TableFieldResource)) {
-        __parent?.service?.refresh?.();
-      }
-      if (!successMessage) {
+      actionField.data = actionField.data || {};
+      if (actionField.data.loading) {
         return;
       }
-      if (manualClose) {
-        modal.success({
-          title: compile(successMessage),
-          onOk: async () => {
-            if (((redirecting && !actionAfterSuccess) || actionAfterSuccess === 'redirect') && redirectTo) {
-              if (isURL(redirectTo)) {
-                window.location.href = redirectTo;
-              } else {
-                navigate(redirectTo);
-              }
-            }
-          },
+      actionField.data.loading = true;
+
+      try {
+        const result = await resource.update({
+          filterByTk,
+          values: { ...assignedValues },
+          // TODO(refactor): should change to inject by plugin
+          triggerWorkflows: triggerWorkflows?.length
+            ? triggerWorkflows.map((row) => [row.workflowKey, row.context].filter(Boolean).join('!')).join(',')
+            : undefined,
         });
-      } else {
-        message.success(compile(successMessage));
-        if (((redirecting && !actionAfterSuccess) || actionAfterSuccess === 'redirect') && redirectTo) {
-          if (isURL(redirectTo)) {
-            window.location.href = redirectTo;
-          } else {
-            navigate(redirectTo);
+
+        let redirectTo = rawRedirectTo;
+        if (rawRedirectTo) {
+          // eslint-disable-next-line react-hooks/rules-of-hooks
+          redirectTo = await getVariableValue(rawRedirectTo, {
+            variables,
+            localVariables: [...localVariables, { name: '$record', ctx: new Proxy(result?.data?.data, {}) }],
+          });
+        }
+
+        if (actionAfterSuccess === 'previous' || (!actionAfterSuccess && redirecting !== true)) {
+          setVisible?.(false);
+        }
+        // service?.refresh?.();
+        if (callBack) {
+          callBack?.();
+        }
+        if (!(resource instanceof TableFieldResource)) {
+          __parent?.service?.refresh?.();
+        }
+        if (!successMessage) {
+          return;
+        }
+        if (manualClose) {
+          modal.success({
+            title: compile(successMessage),
+            onOk: async () => {
+              if (((redirecting && !actionAfterSuccess) || actionAfterSuccess === 'redirect') && redirectTo) {
+                if (isURL(redirectTo)) {
+                  window.location.href = redirectTo;
+                } else {
+                  navigate(redirectTo);
+                }
+              }
+            },
+          });
+        } else {
+          message.success(compile(successMessage));
+          if (((redirecting && !actionAfterSuccess) || actionAfterSuccess === 'redirect') && redirectTo) {
+            if (isURL(redirectTo)) {
+              window.location.href = redirectTo;
+            } else {
+              navigate(redirectTo);
+            }
           }
         }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        actionField.data.loading = false;
       }
     },
   };
@@ -1088,41 +1103,49 @@ export const useUpdateActionProps = () => {
 
 export const useDestroyActionProps = () => {
   const filterByTk = useFilterByTk();
-  const { resource, service, block, __parent } = useBlockRequestContext();
+  const { resource, service, block, field, __parent } = useBlockRequestContext();
   const { setVisible, setSubmitted } = useActionContext();
   const data = useParamsFromRecord();
   const actionSchema = useFieldSchema();
+  const actionField = useField();
   return {
     async onClick(e?, callBack?) {
       const { triggerWorkflows } = actionSchema?.['x-action-settings'] ?? {};
-      await resource.destroy({
-        filterByTk,
-        // TODO(refactor): should change to inject by plugin
-        triggerWorkflows: triggerWorkflows?.length
-          ? triggerWorkflows.map((row) => [row.workflowKey, row.context].filter(Boolean).join('!')).join(',')
-          : undefined,
-        ...data,
-      });
+      actionField.data = field.data || {};
+      actionField.data.loading = true;
+      try {
+        await resource.destroy({
+          filterByTk,
+          // TODO(refactor): should change to inject by plugin
+          triggerWorkflows: triggerWorkflows?.length
+            ? triggerWorkflows.map((row) => [row.workflowKey, row.context].filter(Boolean).join('!')).join(',')
+            : undefined,
+          ...data,
+        });
 
-      const { count = 0, page = 0, pageSize = 0 } = service?.data?.meta || {};
-      if (count % pageSize === 1 && page !== 1) {
-        const currentPage = service.params[0]?.page;
-        const totalPage = service.data?.meta?.totalPage;
-        if (currentPage === totalPage && service.params[0] && currentPage !== 1) {
-          service.params[0].page = currentPage - 1;
+        const { count = 0, page = 0, pageSize = 0 } = service?.data?.meta || {};
+        if (count % pageSize === 1 && page !== 1) {
+          const currentPage = service.params[0]?.page;
+          const totalPage = service.data?.meta?.totalPage;
+          if (currentPage === totalPage && service.params[0] && currentPage !== 1) {
+            service.params[0].page = currentPage - 1;
+          }
         }
-      }
-      if (callBack) {
-        callBack?.();
-      }
-      //  else {
-      //   service?.refresh?.();
-      // }
-      setSubmitted?.(true);
-      if (block && block !== 'TableField') {
-        __parent?.service?.refresh?.();
-        setVisible?.(false);
+        if (callBack) {
+          callBack?.();
+        }
+        //  else {
+        //   service?.refresh?.();
+        // }
         setSubmitted?.(true);
+        if (block && block !== 'TableField') {
+          __parent?.service?.refresh?.();
+          setVisible?.(false);
+          setSubmitted?.(true);
+        }
+      } catch (error) {
+        console.error(error);
+        actionField.data.loading = true;
       }
     },
   };
@@ -1220,10 +1243,277 @@ export const useRefreshActionProps = () => {
   };
 };
 
+export interface ColumnInfo {
+  key: string;
+  title: string;
+  dataIndex: string;
+  visible: boolean;
+  fixed?: 'left' | 'right' | false;
+  width?: number;
+  order?: number;
+}
+
+/**
+ * Get table columns from schema
+ */
+export const useTableColumns = (): ColumnInfo[] => {
+  const fieldSchema = useFieldSchema();
+  const compile = useCompile();
+  const { t } = useTranslation();
+  const collection = useCollection();
+
+  return useMemo(() => {
+    const columns: ColumnInfo[] = [];
+
+    // Find the root schema or table parent schema
+    const findRootOrTableParent = (schema: any): any => {
+      let current = schema;
+
+      // Travel up the schema tree
+      while (current) {
+        if (current?.['x-component'] === 'ActionBar') {
+          break;
+        }
+
+        // If we reached the root, break
+        if (!current.parent) {
+          break;
+        }
+
+        current = current.parent;
+      }
+      const parent = current.parent;
+      if (parent) {
+        const schema = parent?.reduceProperties((buf, s) => {
+          if (s?.['x-component'] === 'TableV2') {
+            return buf.concat([s]);
+          }
+          return buf;
+        }, []);
+        return schema?.[0];
+      }
+      return null;
+    };
+
+    // More comprehensive search for table columns
+    const findColumnsInSchema = (schema: any, depth = 0): void => {
+      if (!schema || depth > 1) return;
+
+      // Direct table column check
+      if (
+        schema?.['x-component']?.includes?.('Table.Column') ||
+        schema?.['x-decorator']?.includes?.('Table.Column') ||
+        schema?.['x-component'] === 'TableV2.Column'
+      ) {
+        // Find collection fields in the column schema (same logic as Table.tsx)
+        const collectionFields = schema.reduceProperties
+          ? schema.reduceProperties((buf, s) => {
+              if (s?.['x-component'] === 'CollectionField') {
+                return buf.concat([s]);
+              }
+              return buf;
+            }, [])
+          : [];
+
+        // Get the real dataIndex from collection field
+        const realDataIndex = collectionFields?.length > 0 ? collectionFields[0].name : schema.name;
+
+        // Get field information from collection (same logic as Table.tsx)
+        const collectionField = collection?.getField?.(realDataIndex);
+
+        // Process title with same logic as Table.tsx
+        let columnTitle = t(schema?.title, { ns: NAMESPACE_UI_SCHEMA }) || schema.title;
+
+        // Special handling for Actions column
+        if (!columnTitle && schema.name === 'actions') {
+          columnTitle = t('Actions');
+        }
+
+        // If no title from schema, try to get from collection field
+        if (!columnTitle && collectionField) {
+          columnTitle =
+            t(collectionField.uiSchema?.title, { ns: NAMESPACE_UI_SCHEMA }) ||
+            collectionField.uiSchema?.title ||
+            collectionField.name;
+        }
+
+        // Fallback to schema name or generated name
+        if (!columnTitle) {
+          columnTitle = schema.name || `Column ${columns.length + 1}`;
+        }
+
+        // Apply compile function for template processing
+        columnTitle = compile(columnTitle) || columnTitle;
+
+        const columnInfo: ColumnInfo = {
+          key: schema['x-uid'] || schema.name || `column-${columns.length}`,
+          title: columnTitle,
+          dataIndex: realDataIndex || `column-${columns.length}`,
+          visible: schema['x-display'] !== 'hidden',
+          fixed: schema['x-component-props']?.fixed || false,
+          width: schema['x-component-props']?.width,
+          order: schema['x-index'] || columns.length,
+        };
+
+        columns.push(columnInfo);
+      }
+
+      // Search in properties
+      if (schema.properties) {
+        Object.keys(schema.properties).forEach((key) => {
+          findColumnsInSchema(schema.properties[key], depth + 1);
+        });
+      }
+
+      // Search in items (for array schemas)
+      if (schema.items) {
+        findColumnsInSchema(schema.items, depth + 1);
+      }
+    };
+
+    // Start searching from root or table parent schema instead of current fieldSchema
+    const searchRoot = findRootOrTableParent(fieldSchema);
+
+    findColumnsInSchema(searchRoot);
+
+    // Sort by order
+    return columns.sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [fieldSchema, compile, t, collection]);
+};
+
+export const useEditTableActionProps = () => {
+  const field = useField<Field>();
+  const fieldSchema = useFieldSchema();
+  const columns = useTableColumns();
+
+  // Find the actual TableV2 schema to get consistent tableId
+  const findTableSchema = useCallback(() => {
+    let current = fieldSchema;
+
+    // Travel up and then search down to find TableV2 schema
+    while (current) {
+      // Look for TableV2 in current level and children
+      const findTableV2InProperties = (schema: any): any => {
+        if (!schema?.properties) return null;
+
+        for (const key in schema.properties) {
+          const childSchema = schema.properties[key];
+
+          // Found TableV2!
+          if (childSchema['x-component'] === 'TableV2') {
+            return childSchema;
+          }
+
+          // Recursively search in child properties
+          const found = findTableV2InProperties(childSchema);
+          if (found) return found;
+        }
+
+        return null;
+      };
+
+      const tableV2 = findTableV2InProperties(current);
+      if (tableV2) {
+        return tableV2;
+      }
+
+      // If we reached the root, break
+      if (!current.parent) {
+        break;
+      }
+
+      current = current.parent;
+    }
+
+    return current;
+  }, [fieldSchema]);
+
+  // Get table ID for localStorage using the same logic as useTableColumns
+  const tableSchema = useMemo(() => findTableSchema(), [findTableSchema]);
+  const tableId = useMemo(() => tableSchema?.['x-uid'] || 'default', [tableSchema]);
+  const { getSettings, saveSettings, clearSettings } = useColumnSettings(tableId);
+  const [savedSettings, setSavedSettings] = useState<ColumnInfo[]>(getSettings());
+
+  // Get saved settings and merge with current columns
+  const mergedColumns = useMemo(() => {
+    if (columns.length === 0) return [];
+
+    if (!savedSettings || savedSettings.length === 0) {
+      return columns;
+    }
+
+    // Create a map for quick lookup
+    const savedSettingsMap = new Map();
+    savedSettings.forEach((setting) => {
+      savedSettingsMap.set(setting.key, setting);
+    });
+
+    // Merge saved settings with current columns
+    const merged = columns.map((column) => {
+      const savedSetting = savedSettingsMap.get(column.key);
+      if (savedSetting) {
+        return {
+          ...column,
+          visible: savedSetting.visible,
+          order: savedSetting.order,
+          width: savedSetting.width || column.width,
+          fixed: savedSetting.fixed || column.fixed,
+        };
+      }
+      return column;
+    });
+
+    // Sort by saved order if available
+    return merged.sort((a, b) => (a.order || 0) - (b.order || 0));
+  }, [columns, savedSettings]);
+
+  // Set merged columns to field dataSource for EditTable component to use
+  useEffect(() => {
+    if (mergedColumns.length > 0) {
+      field.dataSource = mergedColumns;
+    }
+  }, [mergedColumns, field]);
+
+  const onSubmit = useCallback(
+    (values) => {
+      if (!values?.columns || !Array.isArray(values.columns)) {
+        return;
+      }
+
+      // Save column settings to localStorage
+      const columnSettings: ColumnInfo[] = values.columns.map((column, index) => ({
+        key: column.key,
+        title: column.title,
+        dataIndex: column.dataIndex,
+        visible: column.visible,
+        fixed: column.fixed,
+        width: column.width,
+        order: index,
+      }));
+
+      saveSettings(columnSettings);
+    },
+    [saveSettings],
+  );
+
+  const onReset = useCallback(() => {
+    // Clear localStorage settings to revert to schema defaults
+    clearSettings();
+    setSavedSettings(getSettings());
+  }, [clearSettings]);
+
+  return {
+    columns: mergedColumns,
+    onSubmit,
+    onReset,
+  };
+};
+
 export const useDetailsPaginationProps = () => {
   const ctx = useDetailsBlockContext();
   const count = ctx.service?.data?.meta?.count || 0;
   const current = ctx.service?.data?.meta?.page;
+  const { hasNext } = ctx.service?.data?.meta || {};
   if (!count && current) {
     return {
       simple: true,
@@ -1241,7 +1531,7 @@ export const useDetailsPaginationProps = () => {
       },
       showTotal: false,
       showTitle: false,
-      total: ctx.service?.data?.data?.length ? 1 * current + 1 : 1 * current,
+      total: ctx.service?.data?.data?.length < 1 || !hasNext ? 1 * current : 1 * current + 1,
       className: css`
         .ant-pagination-simple-pager {
           display: none !important;
@@ -1589,9 +1879,9 @@ export const getAppends = ({
     if (s['x-linkage-rules'] && !isSubMode(s)) {
       const collectAppends = (obj) => {
         const type = Object.keys(obj)[0] || '$and';
-        const list = obj[type];
+        const list = obj[type] || [];
 
-        list.forEach((item) => {
+        list.filter(Boolean).forEach((item) => {
           if ('$and' in item || '$or' in item) {
             return collectAppends(item);
           }
@@ -1752,10 +2042,23 @@ async function resetFormCorrectly(form: Form) {
 }
 
 export function appendQueryStringToUrl(url: string, queryString: string) {
-  if (queryString) {
-    return url + (url.includes('?') ? '&' : '?') + queryString;
+  if (!queryString) {
+    return url;
   }
-  return url;
+
+  const hashIndex = url.indexOf('#');
+  const hasHash = hashIndex >= 0;
+  const path = hasHash ? url.slice(0, hashIndex) : url;
+  const hash = hasHash ? url.slice(hashIndex + 1) : '';
+  const isHashRoute = hash.startsWith('/') || hash.startsWith('!/');
+
+  if (hasHash && isHashRoute) {
+    const hashSeparator = hash.includes('?') ? '&' : '?';
+    return `${path}#${hash}${hashSeparator}${queryString}`;
+  }
+
+  const separator = path.includes('?') ? '&' : '?';
+  return hasHash ? `${path}${separator}${queryString}#${hash}` : `${path}${separator}${queryString}`;
 }
 
 export const useParseURLAndParams = () => {

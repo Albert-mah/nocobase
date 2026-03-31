@@ -406,10 +406,48 @@ describe('workflow > Plugin', () => {
 
       await e2.reload();
       expect(e2.status).toBe(EXECUTION_STATUS.QUEUEING);
+      expect(e2.dispatched).toBe(false);
 
       // queueing execution of disabled workflow should not effect other executions
       await e3.reload();
       expect(e3.status).toBe(EXECUTION_STATUS.RESOLVED);
+    });
+
+    it('beforeStop should wait for all pending and executing tasks', async () => {
+      // trigger multiple events and await their initiation to ensure DB operations are not cut off,
+      // but dispatcher will still process them asynchronously in local queues.
+      const count = 1000;
+
+      const PostModel = db.getCollection('posts').model;
+      const posts = await PostModel.bulkCreate(
+        Array(count)
+          .fill(0)
+          .map((_, index) => ({
+            title: `t${index}`,
+          })),
+        {
+          returning: true,
+        },
+      );
+
+      const w1 = await WorkflowModel.create({
+        enabled: true,
+        type: 'collection',
+        config: {
+          mode: 1,
+          collection: 'posts',
+        },
+      });
+
+      for (const post of posts) {
+        await db.emitAsync('posts.afterCreateWithAssociations', post, {});
+      }
+      // stop the app immediately.
+      // dispatcher.beforeStop() should now wait for all events to be prepared and all pending executions to be processed.
+      await app.emitAsync('beforeStop', app);
+
+      const executions = await w1.getExecutions({ attributes: ['id', 'status'] });
+      expect(executions.length).toBe(count);
     });
   });
 
@@ -518,6 +556,7 @@ describe('workflow > Plugin', () => {
 
       const e1s = await w1.getExecutions();
       expect(e1s.length).toBe(1);
+      expect(e1s[0].dispatched).toBe(true);
       expect(e1s[0].status).toBe(EXECUTION_STATUS.STARTED);
 
       plugin.start(e1s[0]);
@@ -587,12 +626,14 @@ describe('workflow > Plugin', () => {
 
       const w1 = await WModel.create(
         {
+          id: 10000,
           enabled: true,
           type: 'syncTrigger',
           key: 'abc',
           current: true,
         },
         {
+          // Can't generate id automatically when disabling hooks
           hooks: false,
         },
       );
@@ -615,6 +656,7 @@ describe('workflow > Plugin', () => {
 
       const w1 = await WorkflowRepo.create({
         values: {
+          id: 10001,
           enabled: true,
           type: 'syncTrigger',
           key: 'abc',

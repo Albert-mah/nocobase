@@ -14,8 +14,8 @@ const zlib = require('zlib');
 const tar = require('tar');
 const path = require('path');
 const { createStoragePluginsSymlink } = require('@nocobase/utils/plugin-symlink');
-const chalk = require('chalk');
-const { getAccessKeyPair, showLicenseInfo, LicenseKeyError } = require('../util');
+const { getAccessKeyPair, showLicenseInfo, LicenseKeyError } = require('../license');
+const { logger } = require('../logger');
 
 class Package {
   data;
@@ -78,7 +78,7 @@ class Package {
     }
 
     if (!this.data.versions[version]) {
-      console.log(chalk.redBright(`Download failed: ${this.packageName}@${version} package does not exist`));
+      logger.error(`Download failed: ${this.packageName}@${version} package does not exist`);
     }
 
     return [version, this.data.versions[version].dist.tarball];
@@ -96,6 +96,19 @@ class Package {
     return false;
   }
 
+  async isDepPackage() {
+    const pkg1 = path.resolve(process.cwd(), 'node_modules', this.packageName, 'package.json');
+    const pkg2 = path.resolve(process.cwd(), process.env.PLUGIN_STORAGE_PATH, this.packageName, 'package.json');
+    if ((await fs.exists(pkg1)) && (await fs.exists(pkg2))) {
+      const readPath1 = fs.realpathSync(pkg1);
+      const readPath2 = fs.realpathSync(pkg2);
+      if (readPath1 !== readPath2) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   async isDownloaded(version) {
     const packageFile = path.resolve(process.env.PLUGIN_STORAGE_PATH, this.packageName, 'package.json');
     if (await fs.exists(packageFile)) {
@@ -109,7 +122,11 @@ class Package {
 
   async download(options = {}) {
     if (await this.isDevPackage()) {
-      console.log(chalk.yellowBright(`Skipped: ${this.packageName} is dev package`));
+      logger.info(`Skipped: ${this.packageName} is dev package`);
+      return;
+    }
+    if (await this.isDepPackage()) {
+      logger.info(`Skipped: ${this.packageName} is dependency package`);
       return;
     }
     if (await this.isDownloaded(options.version)) {
@@ -117,7 +134,7 @@ class Package {
     }
     await this.getInfo();
     if (!this.data) {
-      console.log(chalk.redBright(`Download failed: ${this.packageName} package does not exist`));
+      logger.error(`Download failed: ${this.packageName} package does not exist`);
       return;
     }
     try {
@@ -141,7 +158,7 @@ class Package {
           .on('finish', resolve)
           .on('error', reject);
       });
-      console.log(chalk.greenBright(`Downloaded: ${this.packageName}@${version}`));
+      logger.info(`Downloaded: ${this.packageName}@${version}`);
     } catch (error) {
       if (error?.response?.data && typeof error?.response?.data?.pipe === 'function') {
         let errorMessageBuffer = '';
@@ -150,11 +167,11 @@ class Package {
         });
         error.response.data.on?.('end', () => {
           if (error.response.status === 403) {
-            console.error(chalk.redBright('You do not have permission to download this package version.'));
+            logger.error('You do not have permission to download this package version.');
           }
         });
       }
-      console.log(chalk.redBright(`Download failed: ${this.packageName}`));
+      logger.error(`Download failed: ${this.packageName}`);
     }
   }
 }
@@ -185,12 +202,13 @@ class PackageManager {
         responseType: 'json',
       });
       this.token = res1.data.token;
+      logger.info('Login success');
     } catch (error) {
       if (error?.response?.data?.error === 'license not valid') {
         showLicenseInfo(LicenseKeyError.notValid);
       }
-      console.error(chalk.redBright(`Login failed: ${this.baseURL}`));
-      console.error(error);
+      logger.error(`Login failed: ${this.baseURL}`);
+      logger.error(error?.message, { error });
     }
   }
 
@@ -227,7 +245,7 @@ class PackageManager {
     const dir = path.resolve(process.env.PLUGIN_STORAGE_PATH, packageName);
     const r = await fs.exists(dir);
     if (r) {
-      console.log(chalk.yellowBright(`Removed: ${packageName}`));
+      logger.info(`Removed: ${packageName}`);
       await fs.rm(dir, { force: true, recursive: true });
     }
   }
@@ -243,9 +261,11 @@ class PackageManager {
         await this.removePackage(pkg);
       }
     }
+    logger.info(`Download plugins...`);
     for (const pkg of licensed_plugins) {
       await this.getPackage(pkg).download({ version });
     }
+    logger.info('Download plugins done');
   }
 }
 
@@ -263,13 +283,24 @@ module.exports = (cli) => {
         NOCOBASE_PKG_URL = 'https://pkg.nocobase.com/',
         NOCOBASE_PKG_USERNAME,
         NOCOBASE_PKG_PASSWORD,
+        DISABLE_PKG_DOWNLOAD,
       } = process.env;
+      if (DISABLE_PKG_DOWNLOAD === 'true') {
+        logger.info('Package download is disabled.');
+        return;
+      }
       let accessKeyId;
       let accessKeySecret;
       try {
         ({ accessKeyId, accessKeySecret } = await getAccessKeyPair());
       } catch (e) {
+        // logger.error('Get AccessKey Pair error', e);
         return;
+      }
+      if (NOCOBASE_PKG_USERNAME && NOCOBASE_PKG_PASSWORD && !accessKeyId && !accessKeySecret) {
+        logger.warn(
+          'NOCOBASE_PKG_USERNAME and NOCOBASE_PKG_PASSWORD will be deprecated in future versions. Please log in to NocoBase Service and refer to the documentation to learn how to install and upgrade commercial plugins.\n',
+        );
       }
       if (!(NOCOBASE_PKG_USERNAME && NOCOBASE_PKG_PASSWORD) && !(accessKeyId && accessKeySecret)) {
         return;
@@ -285,6 +316,6 @@ module.exports = (cli) => {
       await createStoragePluginsSymlink();
     });
   pkg.command('export-all').action(async () => {
-    console.log('Todo...');
+    logger.info('Todo...');
   });
 };

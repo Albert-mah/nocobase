@@ -17,6 +17,20 @@ export default {
   repository: 'WorkflowRepository',
   fields: [
     {
+      name: 'id',
+      type: 'snowflakeId',
+      primaryKey: true,
+      allowNull: false,
+      interface: 'id',
+      uiSchema: {
+        type: 'number',
+        title: '{{t("ID")}}',
+        'x-component': 'InputNumber',
+        'x-component-props': {},
+        'x-read-pretty': true,
+      },
+    },
+    {
       name: 'key',
       type: 'uid',
     },

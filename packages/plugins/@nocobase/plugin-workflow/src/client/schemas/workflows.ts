@@ -157,10 +157,10 @@ export const workflowSchema: ISchema = {
                   },
                   'x-action': 'filter',
                   'x-component': 'Filter.Action',
-                  'x-use-component-props': 'useWorkflowFilterActionProps',
+                  'x-use-component-props': 'useResourceFilterActionProps',
                   'x-component-props': {
                     icon: 'FilterOutlined',
-                    nonfilterable: ['description', 'categories'],
+                    nonfilterable: ['id', 'description', 'categories'],
                   },
                   'x-align': 'left',
                 },
@@ -336,8 +336,7 @@ export const workflowSchema: ISchema = {
                   properties: {
                     enabled: {
                       type: 'boolean',
-                      'x-component': 'CollectionField',
-                      'x-read-pretty': true,
+                      'x-component': 'WorkflowEnabledSwitch',
                       default: false,
                     },
                   },
@@ -397,7 +396,6 @@ export const workflowSchema: ISchema = {
                               title: '{{ t("Edit") }}',
                               properties: {
                                 title: workflowFieldset.title,
-                                enabled: workflowFieldset.enabled,
                                 sync: workflowFieldset.sync,
                                 categories: workflowFieldset.categories,
                                 description: workflowFieldset.description,

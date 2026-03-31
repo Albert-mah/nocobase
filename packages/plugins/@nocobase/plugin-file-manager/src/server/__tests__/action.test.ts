@@ -25,6 +25,7 @@ describe('action', () => {
   let StorageRepo;
   let AttachmentRepo;
   let local1;
+  let defaultStorage;
 
   beforeEach(async () => {
     app = await getApp();
@@ -33,6 +34,7 @@ describe('action', () => {
 
     AttachmentRepo = db.getCollection('attachments').repository;
     StorageRepo = db.getCollection('storages').repository;
+    defaultStorage = await StorageRepo.findOne();
     local1 = await StorageRepo.create({
       values: {
         name: 'local1',
@@ -52,7 +54,7 @@ describe('action', () => {
   });
 
   describe('create / upload', () => {
-    describe('default storage', () => {
+    describe('default storage', async () => {
       it('should be create file record', async () => {
         const Plugin = app.pm.get(PluginFileManagerServer) as PluginFileManagerServer;
         const model = await Plugin.createFileRecord({
@@ -65,7 +67,7 @@ describe('action', () => {
           path: '',
           // size: 13,
           meta: {},
-          storageId: 1,
+          storageId: defaultStorage.id,
         };
         expect(model.toJSON()).toMatchObject(matcher);
       });
@@ -114,7 +116,7 @@ describe('action', () => {
           path: '',
           size: 22,
           meta: {},
-          storageId: 1,
+          storageId: defaultStorage.id,
         };
         expect(model.toJSON()).toMatchObject(matcher);
       });
@@ -130,7 +132,7 @@ describe('action', () => {
           extname: '.txt',
           path: '',
           meta: {},
-          storageId: 1,
+          storageId: defaultStorage.id,
         };
         expect(data).toMatchObject(matcher);
       });
@@ -147,7 +149,7 @@ describe('action', () => {
           // size: 13,
           mimetype: 'text/plain',
           meta: {},
-          storageId: 1,
+          storageId: defaultStorage.id,
         };
 
         // 文件上传和解析是否正常
@@ -202,7 +204,7 @@ describe('action', () => {
           path: '',
           mimetype: 'text/plain',
           meta: {},
-          storageId: 1,
+          storageId: defaultStorage.id,
         };
 
         // 文件上传和解析是否正常
@@ -234,7 +236,7 @@ describe('action', () => {
           path: '',
           // size: 13,
           meta: {},
-          storageId: 1,
+          storageId: defaultStorage.id,
         };
         const { status, body } = await agent.resource('attachments').create({
           attachmentField: 'customers.avatar',
@@ -644,6 +646,43 @@ describe('action', () => {
       const attachmentExists = await AttachmentRepo.findById(attachment.id);
       expect(attachmentExists).toBeNull();
     });
+
+    it('should block path traversal update before delete', async () => {
+      const { body } = await agent.resource('attachments').create({
+        [FILE_FIELD_NAME]: path.resolve(__dirname, './files/text.txt'),
+      });
+
+      const { data: attachment } = body;
+
+      const storage = await StorageRepo.findById(attachment.storageId);
+      const { documentRoot = path.join('storage', 'uploads') } = storage.options || {};
+      const destPath = path.resolve(
+        path.isAbsolute(documentRoot) ? documentRoot : path.join(process.cwd(), documentRoot),
+        storage.path || '',
+      );
+
+      const outsideDir = path.resolve(destPath, '..');
+      await fs.mkdir(outsideDir, { recursive: true });
+      const outsideFilePath = path.join(outsideDir, `blocked-delete-${Date.now()}.txt`);
+      await fs.writeFile(outsideFilePath, 'blocked');
+
+      try {
+        const relative = path.relative(destPath, outsideFilePath);
+        const res = await agent.resource('attachments').update({
+          filterByTk: attachment.id,
+          values: {
+            path: path.dirname(relative),
+            filename: path.basename(relative),
+          },
+        });
+        expect(res.status).toBe(400);
+
+        const outsideExists = await fs.stat(outsideFilePath).catch(() => false);
+        expect(outsideExists).toBeTruthy();
+      } finally {
+        await fs.unlink(outsideFilePath).catch(() => null);
+      }
+    });
   });
 
   describe('association', () => {
@@ -653,14 +692,14 @@ describe('action', () => {
       const FileRepo = db.getRepository('users.files', user.id);
       const f1s = await FileRepo.count();
       expect(f1s).toBe(0);
-      const { body } = await agent.resource('users.files', 1).create({
+      const { body } = await agent.resource('users.files', user.id).create({
         [FILE_FIELD_NAME]: path.resolve(__dirname, './files/text.txt'),
       });
       const f2s = await FileRepo.find({});
       expect(f2s.length).toBe(1);
       expect(f2s[0].userId).toBe(user.id);
 
-      await agent.resource('users.files', 1).destroy({ filterByTk: body.data.id });
+      await agent.resource('users.files', user.id).destroy({ filterByTk: body.data.id });
       const f3s = await FileRepo.count();
       expect(f3s).toBe(0);
     });
@@ -671,7 +710,7 @@ describe('action', () => {
       it('get default storage', async () => {
         const { body, status } = await agent.resource('storages').getBasicInfo();
         expect(status).toBe(200);
-        expect(body.data).toMatchObject({ id: 1 });
+        expect(body.data).toMatchObject({ id: defaultStorage.id });
       });
 
       it('get storage by unexisted id as 404', async () => {

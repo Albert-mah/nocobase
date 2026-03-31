@@ -74,7 +74,7 @@ const queryParentSQL = (options: {
   return `WITH RECURSIVE cte AS (
       SELECT ${q(targetKeyField)}, ${q(foreignKeyField)}
       FROM ${tableName}
-      WHERE ${q(targetKeyField)} IN (${nodeIds.join(',')})
+      WHERE ${q(targetKeyField)} IN ('${nodeIds.join("','")}')
       UNION ALL
       SELECT t.${q(targetKeyField)}, t.${q(foreignKeyField)}
       FROM ${tableName} AS t
@@ -173,6 +173,12 @@ export class EagerLoadingTree {
           pushAttribute(eagerLoadingTreeParent, sourceKey);
         }
 
+        if (associationType == 'BelongsToArray') {
+          const { foreignKey, targetKey } = association;
+          pushAttribute(eagerLoadingTreeParent, foreignKey);
+          pushAttribute(child, targetKey);
+        }
+
         eagerLoadingTreeParent.children.push(child);
 
         if (include.include) {
@@ -262,6 +268,7 @@ export class EagerLoadingTree {
               group: `${node.model.name}.${primaryKeyField}`,
               transaction,
               include: processIncludes(includeForFilter, node.model),
+              raw: true,
             } as any)
           ).map((row) => {
             return { row, pk: row[primaryKeyField] };

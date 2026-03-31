@@ -14,6 +14,12 @@ export default {
   shared: true,
   fields: [
     {
+      name: 'id',
+      type: 'snowflakeId',
+      primaryKey: true,
+      allowNull: false,
+    },
+    {
       title: '存储引擎名称',
       comment: '存储引擎名称',
       type: 'string',
@@ -60,6 +66,12 @@ export default {
       defaultValue: '',
       trim: true,
     },
+    {
+      comment: '重命名模式',
+      type: 'string',
+      name: 'renameMode',
+      defaultValue: 'appendRandomID',
+    },
     // TODO(feature): 需要使用一个实现了可设置默认值的字段
     {
       comment: '默认引擎',
@@ -71,6 +83,11 @@ export default {
       type: 'boolean',
       name: 'paranoid',
       defaultValue: false,
+    },
+    {
+      type: 'json',
+      name: 'settings',
+      defaultValue: {},
     },
   ],
 };

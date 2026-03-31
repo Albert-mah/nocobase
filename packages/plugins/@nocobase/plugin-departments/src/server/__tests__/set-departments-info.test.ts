@@ -29,7 +29,7 @@ describe('set departments info', () => {
 
   beforeAll(async () => {
     app = await createMockServer({
-      plugins: ['field-sort', 'users', 'departments', 'acl', 'data-source-manager'],
+      plugins: ['error-handler', 'field-sort', 'users', 'departments', 'acl', 'data-source-manager'],
     });
     db = app.db;
     repo = db.getRepository('departments');
@@ -50,8 +50,10 @@ describe('set departments info', () => {
   });
 
   it('should set departments roles', async () => {
+    const user = await db.getRepository('users').findOne();
+
     ctx.state.currentUser = await db.getRepository('users').findOne({
-      filterByTk: 1,
+      filterByTk: user.id,
     });
     const role = await db.getRepository('roles').create({
       values: {
@@ -63,10 +65,10 @@ describe('set departments info', () => {
       values: {
         title: 'Department',
         roles: [role.name],
-        members: [1],
+        members: [user.id],
       },
     });
-    await setDepartmentsInfo(ctx, () => {});
+    await setDepartmentsInfo(ctx, async () => {});
     expect(ctx.state.attachRoles.length).toBe(1);
     expect(ctx.state.attachRoles[0].name).toBe('test-role');
   });

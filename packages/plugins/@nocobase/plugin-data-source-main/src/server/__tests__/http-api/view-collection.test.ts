@@ -17,6 +17,7 @@ describe('view collection', () => {
   let db: Database;
   let agent;
   let testViewName;
+  let schema;
   let collectionRepository: Repository;
 
   let fieldsRepository: Repository;
@@ -35,7 +36,11 @@ describe('view collection', () => {
 
     agent = app.agent();
     testViewName = `view_${uid(6)}`;
-    const createViewName = app.db.options.schema ? `${app.db.options.schema}.${testViewName}` : testViewName;
+    schema = process.env.COLLECTION_MANAGER_SCHEMA || app.db.options.schema;
+    if (schema) {
+      await app.db.sequelize.query(`CREATE SCHEMA IF NOT EXISTS ${schema};`);
+    }
+    const createViewName = schema ? `${schema}.${testViewName}` : testViewName;
     const dropSQL = `DROP VIEW IF EXISTS ${createViewName}`;
     await app.db.sequelize.query(dropSQL);
     const viewSQL = (() => {
@@ -140,7 +145,7 @@ SELECT * FROM numbers;
       values: {
         name: testViewName,
         view: true,
-        schema: app.db.inDialect('postgres') ? app.db.options.schema || 'public' : undefined,
+        schema: app.db.inDialect('postgres') ? schema || 'public' : undefined,
         fields: [
           {
             name: 'numbers',
@@ -159,7 +164,7 @@ SELECT * FROM numbers;
   it('should query views data', async () => {
     const response = await agent.resource('dbViews').query({
       filterByTk: testViewName,
-      schema: app.db.options.schema,
+      schema,
       pageSize: 20,
     });
 
@@ -170,7 +175,7 @@ SELECT * FROM numbers;
   it('should list views fields', async () => {
     const response = await agent.resource('dbViews').get({
       filterByTk: testViewName,
-      schema: app.db.options.schema,
+      schema,
     });
 
     expect(response.status).toBe(200);
@@ -316,7 +321,6 @@ SELECT * FROM numbers;
 
     await app.db.sync();
     const UserCollection = app.db.getCollection('users');
-
     const viewName = `t_${uid(6)}`;
     const createViewName = app.db.options.schema ? `${app.db.options.schema}.${viewName}` : viewName;
     const dropSQL = `DROP VIEW IF EXISTS ${createViewName}`;
@@ -346,10 +350,7 @@ SELECT * FROM numbers;
       context: {},
     });
 
-    const response = await agent.resource('collections').list({
-      appends: ['fields'],
-      paginate: false,
-    });
+    const response = await agent.resource('collections').listMeta();
 
     const listResult = response.body.data.find((item) => item.name === viewName);
 
@@ -494,12 +495,17 @@ SELECT * FROM numbers;
     await app.db.sync();
 
     const UserCollection = app.db.getCollection('users');
-
-    // create view
     const viewName = `t_${uid(6)}`;
-    const dropSQL = `DROP VIEW IF EXISTS ${viewName}`;
+    let schemaAndViewName = viewName;
+    const schema = process.env.COLLECTION_MANAGER_SCHEMA || app.db.options.schema || 'public';
+    let usersTableName = UserCollection.quotedTableName();
+    if (db.inDialect('postgres')) {
+      schemaAndViewName = `${schema}.${viewName}`;
+      usersTableName = `${schema}.users`;
+    }
+    const dropSQL = `DROP VIEW IF EXISTS ${schemaAndViewName}`;
     await app.db.sequelize.query(dropSQL);
-    const viewSQL = `CREATE VIEW ${viewName} AS SELECT * FROM ${UserCollection.quotedTableName()}`;
+    const viewSQL = `CREATE VIEW ${schemaAndViewName} AS SELECT * FROM ${usersTableName}`;
     await app.db.sequelize.query(viewSQL);
 
     // create view collection

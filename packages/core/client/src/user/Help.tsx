@@ -9,7 +9,7 @@
 
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import { css } from '@emotion/css';
-import { observer } from '@formily/reactive-react';
+import { observer } from '@nocobase/flow-engine';
 import { parseHTML } from '@nocobase/utils/client';
 import { Dropdown, Menu, Popover } from 'antd';
 import React, { useState } from 'react';
@@ -64,7 +64,7 @@ const SettingsMenu: React.FC<{
       key: 'userManual',
       label: (
         <a
-          href={isSimplifiedChinese ? 'https://docs-cn.nocobase.com/handbook' : 'https://docs.nocobase.com/handbook'}
+          href={isSimplifiedChinese ? 'https://v2.docs.nocobase.com/cn/guide/' : 'https://v2.docs.nocobase.com/guide/'}
           target="_blank"
           rel="noreferrer"
         >

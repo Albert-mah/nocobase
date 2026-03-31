@@ -94,11 +94,15 @@ export default class Processor {
   }
 
   private makeJobs(jobs: Array<JobModel>) {
-    jobs.forEach((job) => {
+    for (const job of jobs) {
       const node = this.nodesMap.get(job.nodeId);
+      if (!node) {
+        this.logger.warn(`node (#${job.nodeId}) not found for job (#${job.id}), this will lead to unexpected error`);
+        continue;
+      }
       this.jobsMapByNodeKey[node.key] = job;
       this.jobResultsMapByNodeKey[node.key] = job.result;
-    });
+    }
   }
 
   public async prepare() {
@@ -146,8 +150,10 @@ export default class Processor {
 
   public async start() {
     const { execution } = this;
-    if (execution.status !== EXECUTION_STATUS.STARTED) {
-      this.logger.warn(`execution was ended with status ${execution.status} before, could not be started again`);
+    if (execution.status) {
+      this.logger.warn(`execution was ended with status ${execution.status} before, could not be started again`, {
+        workflowId: execution.workflowId,
+      });
       return;
     }
     await this.prepare();
@@ -161,8 +167,10 @@ export default class Processor {
 
   public async resume(job: JobModel) {
     const { execution } = this;
-    if (execution.status !== EXECUTION_STATUS.STARTED) {
-      this.logger.warn(`execution was ended with status ${execution.status} before, could not be resumed`);
+    if (execution.status) {
+      this.logger.warn(`execution was ended with status ${execution.status} before, could not be resumed`, {
+        workflowId: execution.workflowId,
+      });
       return;
     }
     await this.prepare();
@@ -174,7 +182,7 @@ export default class Processor {
     let job;
     try {
       // call instruction to get result and status
-      this.logger.debug(`config of node`, { data: node.config });
+      this.logger.debug(`config of node`, { data: node.config, workflowId: node.workflowId });
       job = await instruction(node, prevJob, this);
       if (job === null) {
         return this.exit();
@@ -186,7 +194,7 @@ export default class Processor {
       // for uncaught error, set to error
       this.logger.error(
         `execution (${this.execution.id}) run instruction [${node.type}] for node (${node.id}) failed: `,
-        err,
+        { error: err, workflowId: node.workflowId },
       );
       job = {
         result:
@@ -214,6 +222,9 @@ export default class Processor {
 
     this.logger.info(
       `execution (${this.execution.id}) run instruction [${node.type}] for node (${node.id}) finished as status: ${savedJob.status}`,
+      {
+        workflowId: node.workflowId,
+      },
     );
     this.logger.debug(`result of node`, { data: savedJob.result });
 
@@ -237,7 +248,9 @@ export default class Processor {
       return Promise.reject(new Error('`run` should be implemented for customized execution of the node'));
     }
 
-    this.logger.info(`execution (${this.execution.id}) run instruction [${node.type}] for node (${node.id})`);
+    this.logger.info(`execution (${this.execution.id}) run instruction [${node.type}] for node (${node.id})`, {
+      workflowId: node.workflowId,
+    });
     return this.exec(instruction.run.bind(instruction), node, input);
   }
 
@@ -247,7 +260,9 @@ export default class Processor {
     const parentNode = this.findBranchParentNode(node);
     // no parent, means on main flow
     if (parentNode) {
-      this.logger.debug(`not on main, recall to parent entry node (${node.id})})`);
+      this.logger.debug(`not on main, recall to parent entry node (${node.id})})`, {
+        workflowId: node.workflowId,
+      });
       await this.recall(parentNode, job);
       return null;
     }
@@ -269,7 +284,9 @@ export default class Processor {
       );
     }
 
-    this.logger.info(`execution (${this.execution.id}) resume instruction [${node.type}] for node (${node.id})`);
+    this.logger.info(`execution (${this.execution.id}) resume instruction [${node.type}] for node (${node.id})`, {
+      workflowId: node.workflowId,
+    });
     return this.exec(instruction.resume.bind(instruction), node, job);
   }
 
@@ -288,6 +305,10 @@ export default class Processor {
           if (job.changed('status')) {
             changes.push([`status`, job.status]);
             job.changed('status', false);
+          }
+          if (job.changed('meta')) {
+            changes.push([`meta`, JSON.stringify(job.meta ?? null)]);
+            job.changed('meta', false);
           }
           if (job.changed('result')) {
             changes.push([`result`, JSON.stringify(job.result ?? null)]);
@@ -326,7 +347,9 @@ export default class Processor {
     if (this.mainTransaction && this.mainTransaction !== this.transaction) {
       await this.mainTransaction.commit();
     }
-    this.logger.info(`execution (${this.execution.id}) exiting with status ${this.execution.status}`);
+    this.logger.info(`execution (${this.execution.id}) exiting with status ${this.execution.status}`, {
+      workflowId: this.execution.workflowId,
+    });
     return null;
   }
 
@@ -359,7 +382,9 @@ export default class Processor {
     this.lastSavedJob = job;
     this.jobsMapByNodeKey[job.nodeKey] = job;
     this.jobResultsMapByNodeKey[job.nodeKey] = job.result;
-    this.logger.debug(`job added to save list: ${JSON.stringify(job)}`);
+    this.logger.debug(`job added to save list: ${JSON.stringify(job)}`, {
+      workflowId: this.execution.workflowId,
+    });
 
     return job;
   }
@@ -459,12 +484,17 @@ export default class Processor {
       }
     }
 
-    return {
+    const scopes = {
       $context: this.execution.context,
       $jobsMapByNodeKey: this.jobResultsMapByNodeKey,
       $system: systemFns,
       $scopes,
       $env: this.options.plugin.app.environment.getVariables(),
+    };
+
+    return {
+      ...scopes,
+      ctx: scopes, // 2.0
     };
   }
 

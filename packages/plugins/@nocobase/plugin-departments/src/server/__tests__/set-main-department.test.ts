@@ -27,7 +27,7 @@ describe('set main department', () => {
 
   beforeAll(async () => {
     app = await createMockServer({
-      plugins: ['field-sort', 'users', 'departments'],
+      plugins: ['error-handler', 'field-sort', 'users', 'departments'],
     });
     db = app.db;
     repo = db.getRepository('departments');
@@ -49,26 +49,30 @@ describe('set main department', () => {
         title: 'Department',
       },
     });
-    await db.getRepository('users').create({
+    const testUser = await db.getRepository('users').create({
       values: {
         username: 'test',
       },
     });
+    const users = await db.getRepository('users').find();
+    const userIds = users.map((user) => user.id);
     await agent.resource('departments.members', dept.id).add({
-      values: [1, 2],
+      values: userIds,
     });
     const throughRepo = db.getRepository('departmentsUsers');
     const deptUsers = await throughRepo.find({
       filter: {
         userId: {
-          $in: [1, 2],
+          $in: userIds,
         },
         departmentId: dept.id,
       },
     });
-    for (const item of deptUsers) {
-      expect(item.isMain).toBe(true);
-    }
+    const userRepo = db.getRepository('users');
+    const userRecord1 = await userRepo.findOne({ filterByTk: 1 });
+    const userRecord2 = await userRepo.findOne({ filterByTk: 2 });
+    expect(userRecord1.mainDepartmentId).toBe(dept.id);
+    expect(userRecord2.mainDepartmentId).toBe(dept.id);
 
     const dept2 = await repo.create({
       values: {
@@ -76,19 +80,20 @@ describe('set main department', () => {
       },
     });
     await agent.resource('departments.members', dept2.id).add({
-      values: [2],
+      values: [testUser.id],
     });
     const deptUsers2 = await throughRepo.find({
       filter: {
-        userId: 2,
+        userId: testUser.id,
       },
     });
     expect(deptUsers2.length).toBe(2);
-    expect(deptUsers2.find((i: any) => i.departmentId === dept.id).isMain).toBe(true);
-    expect(deptUsers2.find((i: any) => i.departmentId === dept2.id).isMain).toBe(false);
+    const userRecord = await userRepo.findOne({ filterByTk: 2 });
+    expect(userRecord.mainDepartmentId).toBe(dept.id);
   });
 
   it('should set main department when remove department members', async () => {
+    const user = await db.getRepository('users').findOne();
     const depts = await repo.create({
       values: [
         {
@@ -100,35 +105,38 @@ describe('set main department', () => {
       ],
     });
     await agent.resource('departments.members', depts[0].id).add({
-      values: [1],
+      values: [user.id],
     });
     await agent.resource('departments.members', depts[1].id).add({
-      values: [1],
+      values: [user.id],
     });
     const throughRepo = db.getRepository('departmentsUsers');
     const deptUsers = await throughRepo.find({
       filter: {
-        userId: 1,
+        userId: user.id,
       },
     });
     expect(deptUsers.length).toBe(2);
-    expect(deptUsers.find((i: any) => i.departmentId === depts[0].id).isMain).toBe(true);
-    expect(deptUsers.find((i: any) => i.departmentId === depts[1].id).isMain).toBe(false);
+    const userRepo = db.getRepository('users');
+    const userRecord = await userRepo.findOne({ filterByTk: 1 });
+    expect(userRecord.mainDepartmentId).toBe(depts[0].id);
 
     await agent.resource('departments.members', depts[0].id).remove({
-      values: [1],
+      values: [user.id],
     });
     const deptUsers2 = await throughRepo.find({
       filter: {
-        userId: 1,
+        userId: user.id,
       },
     });
     expect(deptUsers2.length).toBe(1);
     expect(deptUsers2[0].departmentId).toBe(depts[1].id);
-    expect(deptUsers2[0].isMain).toBe(true);
+    const userRecord2 = await userRepo.findOne({ filterByTk: 1 });
+    expect(userRecord2.mainDepartmentId).toBe(depts[1].id);
   });
 
   it('should set main department when add user departments', async () => {
+    const user = await db.getRepository('users').findOne();
     const depts = await repo.create({
       values: [
         {
@@ -139,21 +147,23 @@ describe('set main department', () => {
         },
       ],
     });
-    await agent.resource('users.departments', 1).add({
+    await agent.resource('users.departments', user.id).add({
       values: depts.map((dept: any) => dept.id),
     });
     const throughRepo = db.getRepository('departmentsUsers');
     const deptUsers = await throughRepo.find({
       filter: {
-        userId: 1,
+        userId: user.id,
       },
     });
     expect(deptUsers.length).toBe(2);
-    expect(deptUsers.find((i: any) => i.departmentId === depts[0].id).isMain).toBe(true);
-    expect(deptUsers.find((i: any) => i.departmentId === depts[1].id).isMain).toBe(false);
+    const userRepo = db.getRepository('users');
+    const userRecord = await userRepo.findOne({ filterByTk: 1 });
+    expect(userRecord.mainDepartmentId).toBe(depts[0].id);
   });
 
   it('should set main department when remove user departments', async () => {
+    const user = await db.getRepository('users').findOne();
     const depts = await repo.create({
       values: [
         {
@@ -164,20 +174,46 @@ describe('set main department', () => {
         },
       ],
     });
-    await agent.resource('users.departments', 1).add({
+    await agent.resource('users.departments', user.id).add({
       values: depts.map((dept: any) => dept.id),
     });
-    await agent.resource('users.departments', 1).remove({
+    await agent.resource('users.departments', user.id).remove({
       values: [depts[0].id],
     });
     const throughRepo = db.getRepository('departmentsUsers');
     const deptUsers = await throughRepo.find({
       filter: {
-        userId: 1,
+        userId: user.id,
       },
     });
     expect(deptUsers.length).toBe(1);
     expect(deptUsers[0].departmentId).toBe(depts[1].id);
-    expect(deptUsers[0].isMain).toBe(true);
+    const userRepo = db.getRepository('users');
+    const userRecord = await userRepo.findOne({ filterByTk: 1 });
+    expect(userRecord.mainDepartmentId).toBe(depts[1].id);
+  });
+
+  it('should set main via users.update when user has exactly one department', async () => {
+    const dept = await repo.create({ values: { title: 'OnlyDept' } });
+    await agent.resource('users').update({
+      filterByTk: 1,
+      values: { departments: [{ id: dept.id }] },
+    });
+    const user = await db.getRepository('users').findOne({ filterByTk: 1, fields: ['id', 'mainDepartmentId'] });
+    expect(user.mainDepartmentId).toBe(dept.id);
+  });
+
+  it('should set main via users.update when reducing to one department', async () => {
+    const depts = await repo.create({ values: [{ title: 'DeptA' }, { title: 'DeptB' }] });
+    await agent.resource('users').update({
+      filterByTk: 1,
+      values: { departments: [{ id: depts[0].id }, { id: depts[1].id }] },
+    });
+    await agent.resource('users').update({
+      filterByTk: 1,
+      values: { departments: [{ id: depts[1].id }] },
+    });
+    const user = await db.getRepository('users').findOne({ filterByTk: 1, fields: ['id', 'mainDepartmentId'] });
+    expect(user.mainDepartmentId).toBe(depts[1].id);
   });
 });
